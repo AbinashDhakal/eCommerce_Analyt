@@ -1,0 +1,10 @@
+SELECT 
+  item_id,
+  date,
+  COUNT(CASE WHEN event_name = 'view_item' THEN 1 END) AS total_views,
+  COUNT(CASE WHEN event_name = 'add_to_cart' THEN 1 END) AS total_add_to_cart,
+  COUNT(CASE WHEN event_name = 'purchase' THEN 1 END) AS total_purchases
+FROM `prism-2023-c2.Prism_Main.funnelevents`
+GROUP BY date, item_id
+ORDER BY total_views DESC, total_add_to_cart DESC, total_purchases DESC
+LIMIT 10;

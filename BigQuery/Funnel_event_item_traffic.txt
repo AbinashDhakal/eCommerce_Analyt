@@ -1,0 +1,64 @@
+WITH item_pairs AS (
+  SELECT 
+    fe.item_id AS item_1,
+    LEAD(fe.item_id) OVER (PARTITION BY fe.user_cookie_id ORDER BY fe.event_time) AS item_2,
+    fe.event_name,
+    s.traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city
+  FROM `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN `prism-2023-c2.Prism_Main.sessions` AS s
+  ON fe.session_id = s.session_id
+  WHERE fe.event_name IN ('view_item', 'add_to_cart', 'purchase')
+),
+item_costs AS (
+  SELECT
+    item_id,
+    cost_of_item
+  FROM `prism-2023-c2.Prism_Main.product_costs`
+)
+SELECT 
+  item_1_id,
+  item_2_id,
+  frequency,
+  event_name,
+  traffic_source,
+  traffic_medium,
+  device_category,
+  city,
+  pa1.item_name AS item_1_name,
+  pa1.item_brand AS item_1_brand,
+  pa1.item_main_category AS item_1_main_category,
+  pa1.item_sub_category AS item_1_sub_category,
+  pa1.item_gender AS item_1_gender,
+  pa2.item_name AS item_2_name,
+  pa2.item_brand AS item_2_brand,
+  pa2.item_main_category AS item_2_main_category,
+  pa2.item_sub_category AS item_2_sub_category,
+  pa2.item_gender AS item_2_gender,
+  ic1.cost_of_item AS item_1_cost,
+  ic2.cost_of_item AS item_2_cost
+FROM (
+  SELECT 
+    ip.item_1 AS item_1_id,
+    ip.item_2 AS item_2_id,
+    COUNT(*) AS frequency,
+    event_name,
+    traffic_source,
+    traffic_medium,
+    device_category,
+    city
+  FROM item_pairs ip
+  WHERE ip.item_1 <> ip.item_2 -- Ensure item_1 and item_2 are not the same
+  GROUP BY ip.item_1, ip.item_2, event_name, traffic_source, traffic_medium, device_category, city
+) AS ip
+JOIN `Prism_Main.productattributes` pa1 -- table with product information for item_1
+  ON ip.item_1_id = pa1.item_id
+JOIN `Prism_Main.productattributes` pa2 -- table with product information for item_2
+  ON ip.item_2_id = pa2.item_id
+JOIN item_costs ic1 -- table with item costs for item_1
+  ON ip.item_1_id = ic1.item_id
+JOIN item_costs ic2 -- table with item costs for item_2
+  ON ip.item_2_id = ic2.item_id
+ORDER BY event_name, frequency DESC;

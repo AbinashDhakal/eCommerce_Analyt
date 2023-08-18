@@ -1,0 +1,121 @@
+WITH ViewEvents AS (
+  SELECT 
+    fe.user_cookie_id,
+    CASE
+      WHEN s.traffic_source LIKE '%twitter%' THEN 'Twitter'
+      WHEN s.traffic_source LIKE '%facebook%' THEN 'Facebook'
+      WHEN s.traffic_source LIKE '%instagram%' THEN 'Instagram'
+      WHEN s.traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+      WHEN s.traffic_source LIKE '%tiktok%' THEN 'TikTok'
+      WHEN s.traffic_source LIKE '%reddit%' THEN 'Reddit'
+      WHEN s.traffic_source LIKE '%youtube%' THEN 'YouTube'
+      ELSE s.traffic_source
+    END AS grouped_traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city,
+    fe.item_id,
+    fe.event_name
+  FROM `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN `prism-2023-c2.Prism_Main.sessions` AS s
+  ON fe.session_id = s.session_id
+  WHERE fe.event_name = 'view_item'
+),
+
+PurchaseEvents AS (
+  SELECT 
+    fe.user_cookie_id,
+    CASE
+      WHEN s.traffic_source LIKE '%twitter%' THEN 'Twitter'
+      WHEN s.traffic_source LIKE '%facebook%' THEN 'Facebook'
+      WHEN s.traffic_source LIKE '%instagram%' THEN 'Instagram'
+      WHEN s.traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+      WHEN s.traffic_source LIKE '%tiktok%' THEN 'TikTok'
+      WHEN s.traffic_source LIKE '%reddit%' THEN 'Reddit'
+      WHEN s.traffic_source LIKE '%youtube%' THEN 'YouTube'
+      ELSE s.traffic_source
+    END AS grouped_traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city,
+    fe.item_id,
+    fe.event_name
+  FROM `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN `prism-2023-c2.Prism_Main.sessions` AS s
+  ON fe.session_id = s.session_id
+  WHERE fe.event_name = 'purchase'
+),
+
+ViewConversion AS (
+  SELECT 
+    user_cookie_id,
+    grouped_traffic_source,
+    traffic_medium,
+    device_category,
+    city,
+    item_id,
+    COUNT(DISTINCT user_cookie_id) AS view_count
+  FROM ViewEvents
+  GROUP BY 
+    user_cookie_id,
+    grouped_traffic_source,
+    traffic_medium,
+    device_category,
+    city,
+    item_id
+),
+
+PurchaseConversion AS (
+  SELECT 
+    user_cookie_id,
+    grouped_traffic_source,
+    traffic_medium,
+    device_category,
+    city,
+    item_id,
+    COUNT(DISTINCT user_cookie_id) AS purchase_count
+  FROM PurchaseEvents
+  GROUP BY 
+    user_cookie_id,
+    grouped_traffic_source,
+    traffic_medium,
+    device_category,
+    city,
+    item_id
+),
+
+ItemAttributes AS (
+  SELECT 
+    item_id,
+    item_brand,
+    item_name,
+    item_main_category,
+    item_sub_category,
+    item_gender
+  FROM `Prism_Main.productattributes`
+)
+
+SELECT 
+  vc.grouped_traffic_source,
+  vc.traffic_medium,
+  vc.device_category,
+  vc.city,
+  vc.item_id,
+  ia.item_brand,
+  ia.item_name,
+  ia.item_main_category,
+  ia.item_sub_category,
+  ia.item_gender,
+  COALESCE(purchase_count, 0) AS purchase_count,
+  view_count,
+  SAFE_DIVIDE(COALESCE(purchase_count, 0), view_count) AS conversion_rate
+FROM ViewConversion vc
+LEFT JOIN PurchaseConversion pc
+ON vc.user_cookie_id = pc.user_cookie_id
+  AND vc.grouped_traffic_source = pc.grouped_traffic_source
+  AND vc.traffic_medium = pc.traffic_medium
+  AND vc.device_category = pc.device_category
+  AND vc.city = pc.city
+  AND vc.item_id = pc.item_id
+JOIN ItemAttributes ia
+ON vc.item_id = ia.item_id;

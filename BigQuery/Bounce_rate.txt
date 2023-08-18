@@ -1,0 +1,15 @@
+WITH bounce_rate AS
+(
+SELECT FORMAT_DATE('%d-%m-%Y', total_sessions.date) as date,
+    COUNT(DISTINCT total_sessions.session_id) as n_visit_website,
+    COUNT(DISTINCT purchases.session_id) as n_events
+FROM Prism_Main.sessions as total_sessions
+LEFT JOIN (select distinct date, session_id
+            from Prism_Main.funnelevents
+            ) purchases
+            
+            on total_sessions.session_id = purchases.session_id and total_sessions.date = purchases.date
+GROUP BY 1
+)
+SELECT *, (1 - (n_events/n_visit_website)) * 100 as BR
+FROM bounce_rate

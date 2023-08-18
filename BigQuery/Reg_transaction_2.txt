@@ -1,0 +1,51 @@
+WITH TierStats AS (
+  SELECT
+    user_crm_id,
+    COUNT(DISTINCT transaction_id) AS num_transactions,
+    COUNT(DISTINCT transaction_coupon) AS num_coupon_usage,
+    COUNT(DISTINCT CASE WHEN user_crm_id IS NOT NULL THEN user_cookie_id END) AS num_registered_users,
+    COUNT(DISTINCT CASE WHEN transaction_id IS NOT NULL THEN user_crm_id END) AS num_converted_users
+  FROM prism-2023-c2.Prism_Main.transactions
+  GROUP BY user_crm_id
+),
+UserTiers AS (
+  SELECT
+    user_crm_id,
+    prism_plus_tier,
+    CASE
+      WHEN user_crm_id IS NOT NULL THEN
+        CASE
+          WHEN prism_plus_tier = 'Platinum' THEN 'Platinum'
+          WHEN prism_plus_tier = 'Gold' THEN 'Gold'
+          WHEN prism_plus_tier = 'Silver' THEN 'Silver'
+          WHEN prism_plus_tier = 'Bronze' THEN 'Bronze'
+          ELSE 'Registered User with No Tier'
+        END
+      ELSE 'Non-Registered User'
+    END AS tier
+  FROM prism-2023-c2.Prism_Main.users
+  
+  -- Include Non-Registered Users in the UserTiers CTE
+  UNION ALL
+  
+  SELECT
+    NULL AS user_crm_id,
+    NULL AS prism_plus_tier,
+    'Non-Registered User' AS tier
+  FROM prism-2023-c2.Prism_Main.transactions
+  WHERE user_crm_id IS NULL
+)
+SELECT
+  t1.tier AS Tier,
+  AVG(t2.num_transactions) AS Avg_Num_Transactions,
+  AVG(CASE WHEN t1.tier = 'Non-Registered User' THEN t2.num_converted_users ELSE t2.num_converted_users / t2.num_registered_users END) AS Conversion_Rate,
+  COUNT(DISTINCT CASE WHEN t1.tier <> 'Non-Registered User' THEN t1.user_crm_id END) AS Number_of_Users,
+  SUM(t2.num_coupon_usage) AS Coupon_Usage,
+  CASE
+    WHEN t1.tier = 'Registered User with No Tier' THEN 'Registered User'
+    ELSE 'Non-Registered User'
+  END AS User_Type
+FROM UserTiers t1
+LEFT JOIN TierStats t2 ON t1.user_crm_id = t2.user_crm_id
+GROUP BY t1.tier, User_Type
+ORDER BY User_Type;

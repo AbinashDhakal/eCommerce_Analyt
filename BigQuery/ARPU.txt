@@ -1,0 +1,27 @@
+-- Query to retrieve grouped traffic sources with count, along with traffic_medium, device_category, and city
+SELECT
+  CASE
+    WHEN traffic_source LIKE '%twitter%' THEN 'Twitter'
+    WHEN traffic_source LIKE '%facebook%' THEN 'Facebook'
+    WHEN traffic_source LIKE '%instagram%' THEN 'instagram'
+    WHEN traffic_source LIKE '%pricespy%' THEN 'pricespy'
+    WHEN traffic_source LIKE '%tiktok%' THEN 'tiktok'
+    WHEN traffic_source LIKE '%reddit%' THEN 'reddit'
+    WHEN traffic_source LIKE '%youtube%' THEN 'youtube'
+    ELSE traffic_source
+  END AS grouped_traffic_source,
+  COUNT(*) AS traffic_count,
+  traffic_medium,
+  device_category,
+  FORMAT_DATE('%d-%m-%Y',date) AS month_year,
+  city
+FROM `prism-2023-c2.Prism_Main.sessions`
+GROUP BY month_year,grouped_traffic_source, traffic_medium, device_category, city
+ORDER BY month_year,traffic_medium DESC;
+/*
+-- Query to create the City_Count table
+CREATE TABLE City_Count AS
+SELECT city, COUNT(*) AS city_count
+FROM `prism-2023-c2.Prism_Main.sessions`
+GROUP BY city;
+*/

@@ -1,0 +1,17 @@
+WITH item_pairs AS (
+  SELECT 
+    item_id AS item_1,
+    LEAD(item_id) OVER (PARTITION BY user_cookie_id ORDER BY event_time) AS item_2,
+    event_name
+  FROM `prism-2023-c2.Prism_Main.funnelevents`
+  WHERE event_name IN ('view_item', 'add_to_cart', 'purchase')
+)
+SELECT 
+  item_1 AS item_1_id,
+  item_2 AS item_2_id,
+  COUNT(*) AS frequency,
+  event_name
+FROM item_pairs
+WHERE item_2 IS NOT NULL AND item_1 <> item_2
+GROUP BY item_1, item_2, event_name
+ORDER BY event_name, frequency DESC;

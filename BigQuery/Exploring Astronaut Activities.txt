@@ -1,0 +1,225 @@
+Exploring our data
+Let's start by looking at the table we will be working with.
+
+Execution using papermill encountered an exception here and stopped:
+
+No integration selected
+DataFrame available as
+df
+SELECT
+	*
+FROM evas
+Error: Please select a query source.
+Let's inspect the purpose column in greater detail.
+
+No integration selected
+DataFrame available as
+df
+SELECT
+	purpose
+FROM evas
+What are the most common types of EVAs?
+Using CASE expressions, let's start to get a rough idea of the most popular types of EVAs.
+
+No integration selected
+DataFrame available as
+df
+ SELECT
+    purpose,
+    CASE WHEN purpose ILIKE '%photo%' THEN 1 ELSE 0 END AS photography,
+    CASE WHEN purpose ILIKE '%collect%' THEN 1 ELSE 0 END AS collection,        
+    CASE WHEN purpose ILIKE '%construct%' OR purpose ILIKE '%install%' OR purpose ILIKE '%assembl%' THEN 1 ELSE 0 END AS installation,
+    CASE WHEN purpose ILIKE '%recover%' OR purpose ILIKE '%retrieve%' THEN 1 ELSE 0 END AS retrieval,
+    CASE WHEN purpose ILIKE '%jettison%' THEN 1 ELSE 0 END AS jettison,
+    CASE WHEN purpose ILIKE '%replace%' OR purpose ILIKE '%fix%' OR purpose ILIKE '%repair%' OR purpose ILIKE '%servic%' THEN 1 ELSE 0 END AS repair
+FROM evas
+We are now ready to build this into a final query!
+
+No integration selected
+DataFrame available as
+df
+WITH purposes AS ( 
+ 	SELECT
+        purpose,
+        CASE WHEN purpose ILIKE '%photo%' THEN 1 ELSE 0 END AS photography,
+        CASE WHEN purpose ILIKE '%collect%' THEN 1 ELSE 0 END AS collection,
+        CASE WHEN purpose ILIKE '%construct%' OR purpose ILIKE '%install%' OR purpose ILIKE '%assembl%' THEN 1 ELSE 0 END AS installation,
+        CASE WHEN purpose ILIKE '%recover%' OR purpose ILIKE '%retrieve%' THEN 1 ELSE 0 END AS retrieval,
+        CASE WHEN purpose ILIKE '%jettison%' THEN 1 ELSE 0 END AS jettison,
+        CASE WHEN purpose ILIKE '%replace%' OR purpose ILIKE '%fix%' OR purpose ILIKE '%repair%' OR purpose ILIKE '%servic%' THEN 1 ELSE 0 END AS repair
+    FROM evas
+)
+
+SELECT 
+	SUM(photography) AS count,
+    'photography' AS type
+FROM purposes
+UNION
+SELECT 
+	SUM(collection) AS count,
+    'collection' AS type
+FROM purposes
+UNION
+SELECT 
+	SUM(retrieval) AS count,
+    'retrieval' AS type
+FROM purposes
+UNION
+SELECT 
+	SUM(jettison) AS count,
+    'jettison' AS type
+FROM purposes
+UNION
+SELECT 
+	SUM(repair) AS count,
+    'repair' AS type
+FROM purposes
+UNION
+SELECT 
+	SUM(installation) AS count,
+    'installation' AS type
+FROM purposes
+ORDER BY count
+How much material has been extracted from EVAs?
+We also saw numerous references to extracting rock/dust or geological material when skimming through the purpose column. In this case, extracting the total quantity across the columns will be difficult. Regular expressions to the rescue!
+
+We will define a pattern to extract the total pounds collected per EVA, and then sum them up. Let's first do a sense check of the data.
+
+No integration selected
+DataFrame available as
+df
+SELECT
+	purpose
+FROM evas
+WHERE purpose ILIKE '%geologic%' OR purpose ILIKE '%rock%'
+Okay, we now know that the format of the pounds extracted is always "number lbs of rock/geologic". We can construct a pattern to detect this and extract the number!
+
+To do so, we will make use of:
+
+\d+ to match one or more digits.
+
+\.? to match zero or more periods.\
+
+* to match zero or more digits following the optional decimal place.
+
+() to specify we only want the digits.
+
+\s to match the whitespace (i.e., spaces).
+
+| to specify we either want to match "geologic" or "rock".
+
+Let's put this into action, using SUBSTRING() to extract our pattern!
+
+No integration selected
+DataFrame available as
+df
+SELECT
+	purpose,
+	SUBSTRING(purpose, '(\d+\.?\d*)\slb\sof\s((rock)|(geologic))') AS weight
+FROM evas
+WHERE purpose ILIKE '%rock%' OR purpose ILIKE '%geologic%'
+No integration selected
+DataFrame available as
+df
+WITH weights AS (
+    SELECT
+        purpose,
+        SUBSTRING(purpose, '(\d+\.?\d+)\slb\sof\s[rock|geologic]')::NUMERIC AS weight
+    FROM evas
+    WHERE purpose ILIKE '%rock%' OR purpose ILIKE '%geologic%'
+)
+
+SELECT SUM(weight)
+FROM weights
+Which astronauts have the most time in EVAs?
+We also have information on how much time each EVA took and the astronauts who participated. Let's use this information to try and calculate totals for each astronaut!
+
+First, let's see the maximum number of astronauts in an EVA by splitting the crew column. We can also use TRIM() to remove any extra whitespace from the column.
+
+No integration selected
+DataFrame available as
+df
+SELECT 
+	SPLIT_PART(crew, ',', 3) AS third_astronaut
+FROM evas
+WHERE SPLIT_PART(crew, ',', 3) != ''
+Now we know how we can extract the time for each astronaut! Let's create a CTE we can then use to piece together duration information for each astronaut.
+
+No integration selected
+DataFrame available as
+df
+WITH astronauts_split AS (
+    SELECT
+    	crew,
+        SPLIT_PART(crew, ',', 1) AS first_astronaut,
+        SPLIT_PART(crew, ',', 2) AS second_astronaut,
+        SPLIT_PART(crew, ',', 3) AS third_astronaut,
+        duration
+    FROM evas
+)
+
+SELECT *
+FROM astronauts_split
+Now it's just a matter of splitting apart this table and merging the results.
+
+No integration selected
+DataFrame available as
+df
+WITH astronauts_split AS (
+    SELECT
+    	crew,
+        SPLIT_PART(crew, ',', 1) AS first_astronaut,
+        SPLIT_PART(crew, ',', 2) AS second_astronaut,
+        SPLIT_PART(crew, ',', 3) AS third_astronaut,
+        duration
+    FROM evas
+),
+
+astronaut_durations AS (
+    SELECT
+        first_astronaut AS astronaut,
+        duration
+    FROM astronauts_split
+    WHERE first_astronaut != ''
+    UNION ALL 
+    SELECT
+        second_astronaut AS astronaut,
+        duration
+    FROM astronauts_split
+    WHERE second_astronaut != ''
+    UNION ALL 
+    SELECT
+        third_astronaut AS astronaut,
+        duration
+    FROM astronauts_split
+    WHERE third_astronaut != ''
+)
+
+SELECT
+	astronaut,
+    SUM(duration) AS total_duration
+FROM astronaut_durations
+GROUP BY astronaut
+ORDER BY total_duration DESC
+LIMIT 10
+What is the cumulative amount of time spent in EVAs over time?
+Finally, let's take a look at the cumulative time spent in EVAs by year and space program. To do so, we will need to use a window function in combination with a subquery.
+
+No integration selected
+DataFrame available as
+df
+SELECT
+	TO_DATE(year::TEXT, 'YYYY') AS year,
+    program,
+    duration,
+    SUM(duration) OVER(PARTITION BY program ORDER BY year) AS cumulative_duration
+FROM (
+	SELECT
+        year,
+        program,
+        SUM(duration) AS duration
+    FROM evas
+    GROUP BY year, program
+    ORDER BY year, program
+) AS sub
+ORDER BY year, program

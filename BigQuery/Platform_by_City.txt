@@ -1,0 +1,136 @@
+WITH ViewItem_CTE AS (
+  SELECT
+    FORMAT_DATE('%d-%m-%Y', fe.date) AS month_year,
+    COUNT(DISTINCT fe.session_id) AS ViewItem,
+    CASE
+      WHEN s.traffic_source LIKE '%twitter%' THEN 'Twitter'
+      WHEN s.traffic_source LIKE '%facebook%' THEN 'Facebook'
+      WHEN s.traffic_source LIKE '%instagram%' THEN 'Instagram'
+      WHEN s.traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+      WHEN s.traffic_source LIKE '%tiktok%' THEN 'TikTok'
+      WHEN s.traffic_source LIKE '%reddit%' THEN 'Reddit'
+      WHEN s.traffic_source LIKE '%youtube%' THEN 'YouTube'
+      ELSE s.traffic_source
+    END AS traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city
+  FROM
+    `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN
+    `prism-2023-c2.Prism_Main.sessions` AS s
+  ON
+    fe.session_id = s.session_id
+  WHERE
+    fe.event_name = 'view_item'
+  GROUP BY
+    1, traffic_source, s.traffic_medium, s.device_category, s.city
+),
+Purchase_CTE AS (
+  SELECT
+    FORMAT_DATE('%d-%m-%Y', fe.date) AS month_year,
+    COUNT(DISTINCT fe.session_id) AS Purchase,
+    CASE
+      WHEN s.traffic_source LIKE '%twitter%' THEN 'Twitter'
+      WHEN s.traffic_source LIKE '%facebook%' THEN 'Facebook'
+      WHEN s.traffic_source LIKE '%instagram%' THEN 'Instagram'
+      WHEN s.traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+      WHEN s.traffic_source LIKE '%tiktok%' THEN 'TikTok'
+      WHEN s.traffic_source LIKE '%reddit%' THEN 'Reddit'
+      WHEN s.traffic_source LIKE '%youtube%' THEN 'YouTube'
+      ELSE s.traffic_source
+    END AS traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city
+  FROM
+    `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN
+    `prism-2023-c2.Prism_Main.sessions` AS s
+  ON
+    fe.session_id = s.session_id
+  WHERE
+    fe.event_name = 'purchase'
+  GROUP BY
+    1, traffic_source, s.traffic_medium, s.device_category, s.city
+),
+AddToCart_CTE AS (
+  SELECT
+    FORMAT_DATE('%d-%m-%Y', fe.date) AS month_year,
+    COUNT(DISTINCT fe.session_id) AS AddToCart,
+    CASE
+      WHEN s.traffic_source LIKE '%twitter%' THEN 'Twitter'
+      WHEN s.traffic_source LIKE '%facebook%' THEN 'Facebook'
+      WHEN s.traffic_source LIKE '%instagram%' THEN 'Instagram'
+      WHEN s.traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+      WHEN s.traffic_source LIKE '%tiktok%' THEN 'TikTok'
+      WHEN s.traffic_source LIKE '%reddit%' THEN 'Reddit'
+      WHEN s.traffic_source LIKE '%youtube%' THEN 'YouTube'
+      ELSE s.traffic_source
+    END AS traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city
+  FROM
+    `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN
+    `prism-2023-c2.Prism_Main.sessions` AS s
+  ON
+    fe.session_id = s.session_id
+  WHERE
+    fe.event_name = 'add_to_cart'
+  GROUP BY
+    1, traffic_source, s.traffic_medium, s.device_category, s.city
+),
+TotalVisits_CTE AS (
+  SELECT
+    FORMAT_DATE('%d-%m-%Y', date) AS month_year,
+    COUNT(DISTINCT s.session_id) AS TotalVisits,
+    CASE
+      WHEN s.traffic_source LIKE '%twitter%' THEN 'Twitter'
+      WHEN s.traffic_source LIKE '%facebook%' THEN 'Facebook'
+      WHEN s.traffic_source LIKE '%instagram%' THEN 'Instagram'
+      WHEN s.traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+      WHEN s.traffic_source LIKE '%tiktok%' THEN 'TikTok'
+      WHEN s.traffic_source LIKE '%reddit%' THEN 'Reddit'
+      WHEN s.traffic_source LIKE '%youtube%' THEN 'YouTube'
+      ELSE s.traffic_source
+    END AS traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city
+  FROM
+    `prism-2023-c2.Prism_Main.sessions` AS s
+  GROUP BY
+    1, traffic_source, s.traffic_medium, s.device_category, s.city
+)
+SELECT
+  ViewItem_CTE.month_year,
+  ViewItem_CTE.ViewItem,
+  Purchase_CTE.Purchase,
+  AddToCart_CTE.AddToCart,
+  TotalVisits_CTE.TotalVisits,
+  ViewItem_CTE.traffic_source,
+  ViewItem_CTE.traffic_medium,
+  ViewItem_CTE.device_category,
+  ViewItem_CTE.city
+FROM
+  ViewItem_CTE
+LEFT JOIN
+  Purchase_CTE
+ON
+  ViewItem_CTE.month_year = Purchase_CTE.month_year AND ViewItem_CTE.traffic_source = Purchase_CTE.traffic_source
+  AND ViewItem_CTE.traffic_medium = Purchase_CTE.traffic_medium AND ViewItem_CTE.device_category = Purchase_CTE.device_category
+  AND ViewItem_CTE.city = Purchase_CTE.city
+LEFT JOIN
+  AddToCart_CTE
+ON
+  ViewItem_CTE.month_year = AddToCart_CTE.month_year AND ViewItem_CTE.traffic_source = AddToCart_CTE.traffic_source
+  AND ViewItem_CTE.traffic_medium = AddToCart_CTE.traffic_medium AND ViewItem_CTE.device_category = AddToCart_CTE.device_category
+  AND ViewItem_CTE.city = AddToCart_CTE.city
+LEFT JOIN
+  TotalVisits_CTE
+ON
+  ViewItem_CTE.month_year = TotalVisits_CTE.month_year AND ViewItem_CTE.traffic_source = TotalVisits_CTE.traffic_source
+  AND ViewItem_CTE.traffic_medium = TotalVisits_CTE.traffic_medium AND ViewItem_CTE.device_category = TotalVisits_CTE.device_category
+  AND ViewItem_CTE.city = TotalVisits_CTE.city;

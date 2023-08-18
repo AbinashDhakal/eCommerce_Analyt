@@ -1,0 +1,12 @@
+SELECT
+  COUNT(DISTINCT CASE WHEN user_crm_id IS NULL THEN user_cookie_id END) AS NonRegisteredUsers_NumOfUsers,
+  SUM(CASE WHEN user_crm_id IS NULL THEN 1 ELSE 0 END) AS NonRegisteredUsers_NumOfTransactions,
+  SUM(CASE WHEN user_crm_id IS NULL THEN transaction_revenue ELSE 0 END) AS NonRegisteredUsers_TotalRevenue,
+  COUNT(DISTINCT CASE WHEN user_crm_id IS NOT NULL THEN user_crm_id END) AS RegisteredUsers_NumOfUsers,
+  SUM(CASE WHEN user_crm_id IS NOT NULL THEN 1 ELSE 0 END) AS RegisteredUsers_NumOfTransactions,
+  SUM(CASE WHEN user_crm_id IS NOT NULL THEN transaction_revenue ELSE 0 END) AS RegisteredUsers_TotalRevenue,
+  COUNT(DISTINCT CASE WHEN user_crm_id IS NULL THEN user_cookie_id ELSE user_crm_id END) AS Total_NumOfUsers,
+  COUNT(*) AS Total_NumOfTransactions,
+  SUM(transaction_revenue) AS Total_Revenue
+FROM
+  `prism-2023-c2.Prism_Main.transactions`

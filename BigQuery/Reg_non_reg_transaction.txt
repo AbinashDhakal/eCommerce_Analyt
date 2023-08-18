@@ -1,0 +1,10 @@
+SELECT
+  COUNT(DISTINCT CASE WHEN user_crm_id IS NULL THEN transaction_id END) AS NonRegisteredUsers_NumOfTransactions,
+  CAST(SUM(CASE WHEN user_crm_id IS NULL THEN transaction_revenue ELSE 0 END) AS STRING) AS NonRegisteredUsers_TotalRevenue,
+  COUNT(DISTINCT CASE WHEN user_crm_id IS NOT NULL THEN transaction_id END) AS RegisteredUsers_NumOfTransactions,
+  CAST(SUM(CASE WHEN user_crm_id IS NOT NULL THEN transaction_revenue ELSE 0 END) AS STRING) AS RegisteredUsers_TotalRevenue,
+  CAST(SUM(CASE WHEN user_crm_id IS NULL AND transaction_coupon IS NOT NULL THEN 1 ELSE 0 END) AS STRING) AS NonRegisteredUsers_TotalCoupons,
+  CAST(SUM(CASE WHEN user_crm_id IS NOT NULL AND transaction_coupon IS NOT NULL THEN 1 ELSE 0 END) AS STRING) AS RegisteredUsers_TotalCoupons,
+  CAST(SUM(transaction_revenue) AS STRING) AS Total_Revenue
+FROM
+  `prism-2023-c2.Prism_Main.transactions`

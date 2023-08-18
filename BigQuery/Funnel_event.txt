@@ -1,0 +1,7 @@
+SELECT device_category,
+       COUNT(device_category),
+       event_name,
+       FORMAT_TIMESTAMP('%d-%m-%Y', date) AS day_Month_Year
+FROM `prism-2023-c2.Prism_Main.funnelevents`
+GROUP BY device_category, event_name, day_Month_Year
+ORDER BY device_category, day_Month_Year;

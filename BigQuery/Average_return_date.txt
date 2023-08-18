@@ -1,0 +1,32 @@
+WITH RepeatVisitors AS (
+  SELECT
+    user_cookie_id,
+    COUNT(DISTINCT date) AS total_visits,
+    ARRAY_AGG(date ORDER BY date) AS visit_dates
+  FROM
+    `prism-2023-c2.Prism_Main.funnelevents`
+  GROUP BY
+    user_cookie_id
+  HAVING
+    COUNT(DISTINCT date) > 1
+)
+SELECT
+  COUNT(DISTINCT rv.user_cookie_id) / (SELECT COUNT(DISTINCT user_cookie_id) FROM RepeatVisitors) * 100 AS repeat_visit_rate,
+  (SELECT COUNT(DISTINCT user_cookie_id) FROM RepeatVisitors) AS repeat_visitors_count,
+  AVG(revisit_interval) AS avg_revisited_day,
+  MAX(revisit_interval) AS largest_day_difference
+FROM
+  RepeatVisitors rv,
+  UNNEST(rv.visit_dates) AS visit_date
+JOIN (
+  SELECT
+    user_cookie_id,
+    DATE_DIFF(LEAD(visit_date) OVER (PARTITION BY user_cookie_id ORDER BY visit_date), visit_date, DAY) AS revisit_interval
+  FROM
+    RepeatVisitors,
+    UNNEST(visit_dates) AS visit_date
+) AS RevisitIntervals
+ON
+  rv.user_cookie_id = RevisitIntervals.user_cookie_id
+GROUP BY
+  repeat_visitors_count;

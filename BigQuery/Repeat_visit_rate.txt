@@ -1,0 +1,19 @@
+WITH RepeatVisitors AS (
+  SELECT
+    user_cookie_id,
+    COUNT(DISTINCT date) AS total_visits
+  FROM
+    `prism-2023-c2.Prism_Main.funnelevents`
+  GROUP BY
+    user_cookie_id
+  HAVING
+    COUNT(DISTINCT date) > 1
+),
+TotalVisitors AS (
+  SELECT
+    COUNT(DISTINCT user_cookie_id) AS total_unique_visitors
+  FROM
+    `prism-2023-c2.Prism_Main.funnelevents`
+)
+SELECT
+  (SELECT COUNT(DISTINCT user_cookie_id) FROM RepeatVisitors) / (SELECT total_unique_visitors FROM TotalVisitors) * 100 AS repeat_visit_rate;

@@ -1,0 +1,55 @@
+WITH ItemPairs AS (
+  SELECT 
+    fe.item_id AS item_1_id,
+    LEAD(fe.item_id) OVER (PARTITION BY fe.user_cookie_id ORDER BY fe.event_time) AS item_2_id,
+    fe.event_name,
+    s.traffic_source,
+    s.traffic_medium,
+    s.device_category,
+    s.city
+  FROM `prism-2023-c2.Prism_Main.funnelevents` AS fe
+  JOIN `prism-2023-c2.Prism_Main.sessions` AS s
+  ON fe.session_id = s.session_id
+  WHERE fe.event_name IN ('view_item', 'add_to_cart', 'purchase')
+),
+ItemNames AS (
+  SELECT 
+    item_id,
+    item_name,
+    item_brand,
+    item_main_category,
+    item_sub_category,
+    item_gender
+  FROM `Prism_Main.productattributes`
+)
+SELECT 
+  ip.item_1_id,
+  COUNT(*) AS frequency,
+  ip.event_name,
+  ip.traffic_source,
+  ip.traffic_medium,
+  ip.device_category,
+  ip.city,
+  inames.item_name AS item_1_name,
+  inames.item_brand AS item_1_brand,
+  inames.item_main_category AS item_1_main_category,
+  inames.item_sub_category AS item_1_sub_category,
+  inames.item_gender AS item_1_gender
+FROM ItemPairs ip
+LEFT JOIN ItemNames inames
+ON ip.item_1_id = inames.item_id
+GROUP BY 
+  ip.item_1_id,
+  ip.event_name,
+  ip.traffic_source,
+  ip.traffic_medium,
+  ip.device_category,
+  ip.city,
+  inames.item_name,
+  inames.item_brand,
+  inames.item_main_category,
+  inames.item_sub_category,
+  inames.item_gender
+ORDER BY 
+  ip.item_1_id, 
+  frequency DESC;

@@ -1,0 +1,37 @@
+WITH item_pairs AS (
+  SELECT 
+    item_id AS item_1,
+    LEAD(item_id) OVER (PARTITION BY user_cookie_id ORDER BY event_time) AS item_2,
+    event_name
+  FROM `prism-2023-c2.Prism_Main.funnelevents`
+  WHERE event_name IN ('view_item', 'add_to_cart', 'purchase')
+)
+SELECT 
+  item_1_id,
+  item_2_id,
+  frequency,
+  event_name,
+  pa1.item_name AS item_1_name,
+  pa1.item_brand AS item_1_brand,
+  pa1.item_main_category AS item_1_main_category,
+  pa1.item_sub_category AS item_1_sub_category,
+  pa1.item_gender AS item_1_gender,
+  pa2.item_name AS item_2_name,
+  pa2.item_brand AS item_2_brand,
+  pa2.item_main_category AS item_2_main_category,
+  pa2.item_sub_category AS item_2_sub_category,
+  pa2.item_gender AS item_2_gender
+FROM (
+  SELECT 
+    ip.item_1 AS item_1_id,
+    ip.item_2 AS item_2_id,
+    COUNT(*) AS frequency,
+    event_name
+  FROM item_pairs ip
+  GROUP BY ip.item_1, ip.item_2, event_name
+) AS ip
+JOIN `Prism_Main.productattributes` pa1 -- table with product information for item_1
+  ON ip.item_1_id = pa1.item_id
+JOIN `Prism_Main.productattributes` pa2 -- table with product information for item_2
+  ON ip.item_2_id = pa2.item_id
+ORDER BY event_name, frequency DESC;

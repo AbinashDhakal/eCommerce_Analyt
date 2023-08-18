@@ -1,0 +1,24 @@
+SELECT
+  CASE
+    WHEN user_crm_id IS NULL THEN 'Non-registered User'
+    ELSE 'Registered User'
+  END AS user_type,
+  CASE
+    WHEN traffic_source LIKE '%twitter%' THEN 'Twitter'
+    WHEN traffic_source LIKE '%facebook%' THEN 'Facebook'
+    WHEN traffic_source LIKE '%instagram%' THEN 'Instagram'
+    WHEN traffic_source LIKE '%pricespy%' THEN 'Pricespy'
+    WHEN traffic_source LIKE '%tiktok%' THEN 'TikTok'
+    WHEN traffic_source LIKE '%reddit%' THEN 'Reddit'
+    WHEN traffic_source LIKE '%youtube%' THEN 'YouTube'
+    ELSE traffic_source
+  END AS grouped_traffic_source,
+  traffic_medium,
+  CASE
+    WHEN EXTRACT(DAYOFWEEK FROM date) IN (1, 7) THEN 'Weekend'
+    ELSE 'Weekday'
+  END AS Weekdays,
+  COUNT(*) AS count,
+FROM `prism-2023-c2.Prism_Main.sessions`
+GROUP BY user_type, grouped_traffic_source, traffic_medium, Weekdays
+ORDER BY user_type, grouped_traffic_source, traffic_medium, Weekdays;

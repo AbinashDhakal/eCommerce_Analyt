@@ -1,0 +1,42 @@
+WITH user_login_counts AS (
+  SELECT
+    CASE
+      WHEN user_crm_id IS NULL THEN user_cookie_id
+      ELSE user_crm_id
+    END AS user_identifier,
+    COUNT(*) AS login_count
+  FROM `prism-2023-c2.Prism_Main.sessions`
+  GROUP BY user_identifier
+)
+
+SELECT
+  login_count_bin,
+  COUNT(DISTINCT CASE
+    WHEN user_identifier IN (
+      SELECT DISTINCT user_crm_id
+      FROM `prism-2023-c2.Prism_Main.sessions`
+      WHERE user_crm_id IS NOT NULL
+    ) THEN user_identifier
+  END) AS registered_user_count,
+  COUNT(DISTINCT CASE
+    WHEN user_identifier NOT IN (
+      SELECT DISTINCT user_crm_id
+      FROM `prism-2023-c2.Prism_Main.sessions`
+      WHERE user_crm_id IS NOT NULL
+    ) THEN user_identifier
+  END) AS non_registered_user_count
+FROM (
+  SELECT
+    CASE
+      WHEN login_count >= 1 AND login_count <= 2 THEN '1-2 logins'
+      WHEN login_count > 2 AND login_count <= 5 THEN '3-5 logins'
+      WHEN login_count > 5 AND login_count <= 10 THEN '6-10 logins'
+      WHEN login_count > 10 AND login_count <= 15 THEN '11-15 logins'
+      WHEN login_count > 15 AND login_count <= 20 THEN '16-20 logins'
+      WHEN login_count > 20 AND login_count <= 25 THEN '21-25 logins'
+      ELSE 'More than 25 logins'
+    END AS login_count_bin,
+    user_identifier
+  FROM user_login_counts
+) AS login_counts
+GROUP BY login_count_bin;

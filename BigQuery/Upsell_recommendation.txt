@@ -1,0 +1,61 @@
+-- Subquery to find co-occurrences of item pairs
+WITH ItemPairs AS (
+  SELECT
+    ti1.item_id AS item_id_1,
+    ti2.item_id AS item_id_2,
+    COUNT(DISTINCT ti1.transaction_id) AS co_occurrences,
+    ROW_NUMBER() OVER (PARTITION BY ti1.item_id ORDER BY COUNT(DISTINCT ti1.transaction_id) DESC) AS rank
+  FROM
+    `prism-2023-c2.Prism_Main.transactionsanditems` AS ti1
+  JOIN
+    `prism-2023-c2.Prism_Main.transactionsanditems` AS ti2
+  ON
+    ti1.transaction_id = ti2.transaction_id
+  WHERE
+    ti1.item_id < ti2.item_id
+  GROUP BY
+    ti1.item_id, ti2.item_id
+),
+
+-- Subquery to find the number of items each user has purchased
+UserPurchasedItems AS (
+  SELECT
+    t.user_cookie_id,
+    COUNT(DISTINCT ti.item_id) AS num_purchased_items
+  FROM
+    `prism-2023-c2.Prism_Main.transactions` AS t
+  JOIN
+    `prism-2023-c2.Prism_Main.transactionsanditems` AS ti
+  ON
+    t.transaction_id = ti.transaction_id
+  GROUP BY
+    t.user_cookie_id
+)
+
+-- Main query to retrieve transaction information and upsell recommendations
+SELECT
+  t.date,
+  t.user_cookie_id,
+  IF(t.user_crm_id IS NULL, 'Not Registered', 'Registered') AS user_status,
+  STRING_AGG(CAST(ti.item_id AS STRING), ', ') AS purchased_items,
+  COUNT(ti.item_id) AS no_of_items,
+  SUM(ti.item_price * ti.item_quantity) AS total_spent,
+  -- Concatenate upsell recommendations into a comma-separated string
+  STRING_AGG(CAST(upsell.item_id_2 AS STRING), ', ') AS upsell_recommendations
+FROM
+  `prism-2023-c2.Prism_Main.transactions` AS t
+JOIN
+  `prism-2023-c2.Prism_Main.transactionsanditems` AS ti
+ON
+  t.transaction_id = ti.transaction_id
+LEFT JOIN
+  ItemPairs AS upsell
+ON
+  ti.item_id = upsell.item_id_1 AND upsell.rank <= 3
+JOIN
+  UserPurchasedItems AS upi
+ON
+  t.user_cookie_id = upi.user_cookie_id
+GROUP BY
+  t.date, t.user_cookie_id, t.user_crm_id, upi.num_purchased_items
+LIMIT 1000;

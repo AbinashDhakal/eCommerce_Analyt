@@ -1,0 +1,25 @@
+
+
+
+---SELECT YEAR(date) AS sales_year, SUM(item_price * item_quantity) AS total_revenue
+SELECT EXTRACT(YEAR FROM date) AS sales_year, ROUND(SUM(item_price * item_quantity),2) AS total_revenue
+FROM `prism-2023-c2.Prism_Main.transactionsanditems`  
+---WHERE date BETWEEN "2020-01-01" AND "2023-07-10"
+---WHERE date ="2023-07-10"
+---  AND item_price IS NOT NULL
+---  AND item_quantity IS NOT NULL;
+GROUP BY sales_year
+ORDER BY sales_year;
+
+
+/*
+
+SELECT EXTRACT(YEAR FROM date) AS year, ROUND(SUM(transaction_total),2)
+FROM `prism-2023-c2.Prism_Main.transactions`
+GROUP BY year
+ORDER BY year
+
+
+SELECT min(date)
+FROM `prism-2023-c2.Prism_Main.transactionsanditems`  ;
+*/

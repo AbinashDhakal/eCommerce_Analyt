@@ -1,0 +1,32 @@
+WITH conversion_rates AS (
+  -- Calculate conversion rates for each item pair and event combination
+  SELECT 
+    item_1_id,
+    item_2_id,
+    traffic_source,
+    traffic_medium,
+    device_category,
+    city,
+    SUM(CASE WHEN event_name = 'purchase' THEN frequency ELSE 0 END) AS purchase_count,
+    SUM(CASE WHEN event_name = 'view_item' THEN frequency ELSE 0 END) AS view_count,
+    CASE 
+      WHEN SUM(CASE WHEN event_name = 'view_item' THEN frequency ELSE 0 END) = 0 THEN NULL
+      ELSE SUM(CASE WHEN event_name = 'purchase' THEN frequency ELSE 0 END) / SUM(CASE WHEN event_name = 'view_item' THEN frequency ELSE 0 END)
+    END AS conversion_rate
+  FROM `prism-2023-c2.Prism_Main_AD.Funnel_item_traffic_frequency_location`
+  WHERE event_name IN ('view_item', 'purchase')
+  GROUP BY 
+    item_1_id, item_2_id, traffic_source, traffic_medium, device_category, city
+)
+SELECT 
+  item_1_id,
+  item_2_id,
+  traffic_source,
+  traffic_medium,
+  device_category,
+  city,
+  view_count,
+  purchase_count,
+  conversion_rate
+FROM conversion_rates
+ORDER BY conversion_rate DESC;
