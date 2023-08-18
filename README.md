@@ -1,4 +1,4 @@
-# eCommerce_Analyt
+# eCommerce_Analyst
 ## eCommerce Analytics and Optimisation Projects
 This GitHub repository contains a collection of projects aimed at enhancing the performance of an eCommerce website using data from the Prism database. These projects provide insights and strategies to improve the website's conversion rates, implement tailored marketing approaches, optimize cross-selling and upselling techniques, and realign the existing loyalty program.
 
